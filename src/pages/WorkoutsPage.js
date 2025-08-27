@@ -9,13 +9,23 @@ function WorkoutsPage() {
   const API = "https://fitnessapp-api-ln8u.onrender.com/workouts";
 
   useEffect(() => {
-    fetch(`${API}/getMyWorkouts`, {
-      headers: { Authorization: `Bearer ${token}` },
+  fetch(`${API}/getMyWorkouts`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("API response:", data);
+
+      if (Array.isArray(data)) {
+        setWorkouts(data.reverse()); 
+      } else if (Array.isArray(data.workouts)) {
+        setWorkouts(data.workouts.reverse()); 
+      } else {
+        setWorkouts([]); 
+      }
     })
-      .then((res) => res.json())
-      .then((data) => setWorkouts(data.workouts.reverse()))
-      .catch(() => setMessage("⚠️ Failed to load workouts"));
-  }, [token]);
+    .catch(() => setMessage("⚠️ Failed to load workouts"));
+}, [token]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -85,14 +95,16 @@ function WorkoutsPage() {
   }
 
   async function handleComplete(id) {
-    const res = await fetch(`${API}/completeWorkout/${id}`, {
+    const res = await fetch(`${API}/completeWorkoutStatus/${id}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
     });
 
     const data = await res.json();
+    console.log("Complete response:", data);
     if (res.ok) {
-      setWorkouts(workouts.map((w) => (w._id === id ? data.workout : w)));
+      const updated = data.workout || data.updatedWorkout || data; 
+      setWorkouts(workouts.map((w) => (w._id === id ? updated : w)));
       setMessage("🏆 Workout marked as completed!");
     } else {
       setMessage(data.message || "Failed to complete workout.");
@@ -158,7 +170,7 @@ function WorkoutsPage() {
                   <p className="card-text">⏱ {w.duration} min</p>
                   <span
                     className={`badge ${
-                      w.status === "Completed" ? "bg-success" : "bg-warning text-dark"
+                      w.status === "completed" ? "bg-success" : "bg-warning text-dark"
                     }`}
                   >
                     {w.status}
@@ -174,7 +186,7 @@ function WorkoutsPage() {
                   <button
                     className="btn btn-sm btn-success"
                     onClick={() => handleComplete(w._id)}
-                    disabled={w.status === "Completed"}
+                    disabled={w.status === "completed"}
                   >
                     ✅ Complete
                   </button>
